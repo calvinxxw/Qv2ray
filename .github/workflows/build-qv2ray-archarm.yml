@@ -65,7 +65,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        repo: [qv2ray-dev-git]
+        repo: [qv2ray, qv2ray-dev-git]
     steps:
     - name: Download build result for job 1
       uses: actions/download-artifact@v2
