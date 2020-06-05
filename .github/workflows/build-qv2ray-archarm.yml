@@ -1,0 +1,117 @@
+name: "Build Qv2ray on ARM"
+
+on: 
+  push:
+  release:
+    types: [prereleased]
+    
+jobs:
+  check_commit_msg:
+    outputs:
+      commit_message: ${{ steps.get_message.outputs.message }}
+    name: Check if the workflow has been disabled.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v1
+      - name: Get commit message
+        id: get_message
+        run: |
+          echo "::set-output name=message::$(git log --format=%B -n 1 ${{ github.event.after }})"
+          echo "::set-env name=message::$(git log --format=%B -n 1 ${{ github.event.after }})"
+  build:
+    needs: check_commit_msg
+    if: ${{ !contains( needs.check_commit_msg.outputs.commit_message, 'NO_ARM') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        repo: [qv2ray, qv2ray-dev-git]
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - name: Run some commands on arm64
+      id: runcmd
+      uses: DuckVador/run-on-arch-action@master
+      with:
+        architecture: aarch64
+        distribution: archlinuxarm
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S base-devel git hicolor-icon-theme qt5-base qt5-tools grpc zxing-cpp qt5-declarative grpc-cli cmake ninja --noconfirm
+          useradd builduser -m
+          passwd -d builduser
+          printf 'builduser ALL=(ALL) ALL\n' | tee -a /etc/sudoers
+          sudo -u builduser bash -c 'cd ~ && git clone https://aur.archlinux.org/${{ matrix.repo }}.git'
+          cd /home/builduser/${{ matrix.repo }}
+          sudo -u builduser bash -c 'cd ~ && cd ${{ matrix.repo }} && makepkg -sf -A --noconfirm'
+          find /home/builduser/${{ matrix.repo }} -executable -type f -exec file -i '{}' \; | grep 'executable; charset=binary' | awk -F: '{print $1}' | xargs -I {} strip {}
+          cp -r /home/builduser/${{ matrix.repo }} /github/home/
+          cd /github/home
+          tar -cvf ${{ matrix.repo }}.tar ${{ matrix.repo }}
+          exit
+    - name: Upload build result for job 1
+      uses: actions/upload-artifact@v2
+      with:
+          name: ${{ matrix.repo }}
+          path: /home/runner/work/_temp/_github_home/${{ matrix.repo }}.tar
+  archx86:
+    needs: [build]
+    name: Arch Linux
+    runs-on: ubuntu-latest
+    container: 
+      image: archlinux:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        repo: [qv2ray-dev-git]
+    steps:
+    - name: Download build result for job 1
+      uses: actions/download-artifact@v2
+      with:
+          name: ${{ matrix.repo }}
+          path: /home/runner/work/_temp/_github_home/${{ matrix.repo }}.tar
+    - name: Setup Basic Environment
+      run: |
+          pacman -Sy base-devel git hicolor-icon-theme qt5-base qt5-tools grpc zxing-cpp qt5-declarative grpc-cli cmake ninja --noconfirm
+          useradd builduser -m
+          passwd -d builduser
+          printf 'builduser ALL=(ALL) ALL\n' | tee -a /etc/sudoers
+          cd
+          ls -R
+    - name: Reackage
+      run: |
+          CUR_DIR=`pwd`
+          cd /github/home
+          ls -R
+          cd ${{ matrix.repo }}.tar
+          tar -xf ${{ matrix.repo }}.tar
+          chown -R builduser ${{ matrix.repo }}
+          mv ${{ matrix.repo }} /home/builduser
+          cd /home/builduser/${{ matrix.repo }}
+          sed -i 's/ninja .* install/cmake -DCMAKE_INSTALL_DO_STRIP=1 -P build\/cmake_install.cmake/' PKGBUILD
+          sudo -u builduser bash -c 'export CARCH=aarch64 && cd /home/builduser/${{ matrix.repo }} && makepkg -R -f -e -A --holdver --noconfirm'
+          mv ${{ matrix.repo }}*.xz $CUR_DIR
+          cd $CUR_DIR
+          
+    - name: Get package name
+      id: get_package
+      run:
+        echo ::set-output name=NAME::$(basename ${{ matrix.repo }}*.xz)
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2-preview
+      with:
+        name: ${{ steps.get_package.outputs.NAME }}
+        path: ${{ steps.get_package.outputs.NAME }}
+
+    - name: Upload binaries to release
+      uses: svenstaro/upload-release-action@v1-release
+      if: github.event_name == 'release'
+      with:
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        file: ${{ steps.get_package.outputs.NAME }}
+        asset_name: ${{ steps.get_package.outputs.NAME }}
+        tag: ${{ github.ref }}
+        overwrite: true
