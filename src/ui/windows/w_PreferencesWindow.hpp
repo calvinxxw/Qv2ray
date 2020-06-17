@@ -1,16 +1,15 @@
 #pragma once
 
 #include "base/Qv2rayBase.hpp"
+#include "ui/common/QvDialog.hpp"
 #include "ui/messaging/QvMessageBus.hpp"
 #include "ui_w_PreferencesWindow.h"
-
-#include <QDialog>
 
 class RouteSettingsMatrixWidget;
 class DnsSettingsWidget;
 
 class PreferencesWindow
-    : public QDialog
+    : public QvDialog
     , private Ui::PreferencesWindow
 {
     Q_OBJECT
@@ -18,8 +17,28 @@ class PreferencesWindow
   public:
     explicit PreferencesWindow(QWidget *parent = nullptr);
     ~PreferencesWindow();
+    void processCommands(QString command, QStringList commands, QMap<QString, QString>) override
+    {
+        const static QMap<QString, int> indexMap{
+            { "general", 0 },    //
+            { "kernel", 1 },     //
+            { "inbound", 2 },    //
+            { "connection", 3 }, //
+            { "route", 4 },      //
+            { "about", 5 }       //
+        };
+
+        if (commands.isEmpty())
+            return;
+        if (command == "open")
+        {
+            const auto c = commands.takeFirst();
+            tabWidget->setCurrentIndex(indexMap[c]);
+        }
+    }
 
   private:
+    void updateColorScheme() override{};
     QvMessageBusSlotDecl;
 
   private slots:

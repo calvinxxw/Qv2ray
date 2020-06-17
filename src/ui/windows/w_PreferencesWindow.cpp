@@ -41,7 +41,7 @@ using Qv2ray::common::validation::IsValidIPAddress;
     autoStartConnCombo->setEnabled(_enabled);                                                                                                   \
     autoStartSubsCombo->setEnabled(_enabled);
 
-PreferencesWindow::PreferencesWindow(QWidget *parent) : QDialog(parent), CurrentConfig()
+PreferencesWindow::PreferencesWindow(QWidget *parent) : QvDialog(parent), CurrentConfig()
 {
     setupUi(this);
     //
@@ -80,11 +80,6 @@ PreferencesWindow::PreferencesWindow(QWidget *parent) : QDialog(parent), Current
     themeCombo->setCurrentText(CurrentConfig.uiConfig.theme);
     darkThemeCB->setChecked(CurrentConfig.uiConfig.useDarkTheme);
     darkTrayCB->setChecked(CurrentConfig.uiConfig.useDarkTrayIcon);
-#if (QV2RAY_USE_BUILTIN_DARKTHEME)
-    // If we use built in theme, it should always be fusion.
-    themeCombo->setEnabled(!CurrentConfig.uiConfig.useDarkTheme);
-    darkThemeLabel->setText(tr("Use built-in darkmode Theme"));
-#endif
     languageComboBox->setCurrentText(CurrentConfig.uiConfig.language);
     logLevelComboBox->setCurrentIndex(CurrentConfig.logLevel);
     tProxyCheckBox->setChecked(CurrentConfig.tProxySupport);
@@ -244,6 +239,7 @@ QvMessageBusSlotImpl(PreferencesWindow)
 
 PreferencesWindow::~PreferencesWindow()
 {
+    DEBUG(MODULE_UI, "Preference window destructor.")
 }
 
 void PreferencesWindow::on_buttonBox_accepted()
@@ -325,7 +321,7 @@ void PreferencesWindow::on_buttonBox_accepted()
         }
         SaveGlobalSettings(CurrentConfig);
         UIMessageBus.EmitGlobalSignal(QvMBMessage::UPDATE_COLORSCHEME);
-        if (NeedRestart)
+        if (NeedRestart && !KernelInstance->CurrentConnection().isEmpty())
         {
             this->setEnabled(false);
             qApp->processEvents();
@@ -655,16 +651,6 @@ void PreferencesWindow::on_darkThemeCB_stateChanged(int arg1)
 {
     LOADINGCHECK
     CurrentConfig.uiConfig.useDarkTheme = arg1 == Qt::Checked;
-#if (QV2RAY_USE_BUILTIN_DARKTHEME)
-    themeCombo->setEnabled(arg1 != Qt::Checked);
-
-    if (arg1 == Qt::Checked)
-    {
-        themeCombo->setCurrentIndex(QStyleFactory::keys().indexOf("Fusion"));
-        CurrentConfig.uiConfig.theme = "Fusion";
-    }
-
-#endif
 }
 
 void PreferencesWindow::on_darkTrayCB_stateChanged(int arg1)
@@ -942,7 +928,6 @@ void PreferencesWindow::on_tproxGroupBox_toggled(bool arg1)
     NEEDRESTART
     CurrentConfig.inboundConfig.useTPROXY = arg1;
 #endif
-
 }
 
 void PreferencesWindow::on_tProxyPort_valueChanged(int arg1)

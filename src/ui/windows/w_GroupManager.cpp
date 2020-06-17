@@ -31,7 +31,7 @@
         }                                                                                                                                       \
         return _list;                                                                                                                           \
     }())
-GroupManager::GroupManager(QWidget *parent) : QDialog(parent)
+GroupManager::GroupManager(QWidget *parent) : QvDialog(parent)
 {
     setupUi(this);
     QvMessageBusConnect(GroupManager);
@@ -45,7 +45,7 @@ GroupManager::GroupManager(QWidget *parent) : QDialog(parent)
     routeSettingsGB->setLayout(new QGridLayout(routeSettingsGB));
     routeSettingsGB->layout()->addWidget(routeSettingsWidget);
     //
-    UpdateColorScheme();
+    updateColorScheme();
     connectionListRCMenu->addSection(tr("Connection Management"));
     connectionListRCMenu->addAction(exportConnectionAction);
     connectionListRCMenu->addAction(deleteConnectionAction);
@@ -57,10 +57,7 @@ GroupManager::GroupManager(QWidget *parent) : QDialog(parent)
     connect(exportConnectionAction, &QAction::triggered, this, &GroupManager::onRCMExportConnectionTriggered);
     connect(deleteConnectionAction, &QAction::triggered, this, &GroupManager::onRCMDeleteConnectionTriggered);
     //
-    connect(ConnectionManager, &QvConfigHandler::OnConnectionLinkedWithGroup, //
-            [&]() {                                                           //
-                this->reloadConnectionsList(currentGroupId);                  //
-            });
+    connect(ConnectionManager, &QvConfigHandler::OnConnectionLinkedWithGroup, this, &GroupManager::reloadCurrentGroup);
     //
     connect(ConnectionManager, &QvConfigHandler::OnGroupCreated, this, &GroupManager::reloadGroupRCMActions);
     connect(ConnectionManager, &QvConfigHandler::OnGroupDeleted, this, &GroupManager::reloadGroupRCMActions);
@@ -172,6 +169,8 @@ void GroupManager::reloadGroupRCMActions()
 
 void GroupManager::reloadConnectionsList(const GroupId &group)
 {
+    if (group == NullGroupId)
+        return;
     connectionsTable->clearContents();
     connectionsTable->model()->removeRows(0, connectionsTable->rowCount());
     const auto &connections = ConnectionManager->Connections(group);
@@ -239,7 +238,7 @@ void GroupManager::onRCMActionTriggered_Move()
     reloadConnectionsList(currentGroupId);
 }
 
-void GroupManager::UpdateColorScheme()
+void GroupManager::updateColorScheme()
 {
     addGroupButton->setIcon(QICON_R("add.png"));
     removeGroupButton->setIcon(QICON_R("delete.png"));
@@ -263,6 +262,7 @@ std::tuple<QString, CONFIGROOT> GroupManager::GetSelectedConfig()
 
 GroupManager::~GroupManager()
 {
+    DEBUG(MODULE_UI, "Group window destructor.")
 }
 
 void GroupManager::on_addGroupButton_clicked()

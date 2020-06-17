@@ -1,17 +1,17 @@
 #pragma once
 
 #include "base/Qv2rayBase.hpp"
+#include "ui/common/QvDialog.hpp"
 #include "ui/messaging/QvMessageBus.hpp"
 #include "ui_w_GroupManager.h"
 
-#include <QDialog>
 #include <QMenu>
 
 class DnsSettingsWidget;
 class RouteSettingsMatrixWidget;
 
 class GroupManager
-    : public QDialog
+    : public QvDialog
     , private Ui::w_GroupManager
 {
     Q_OBJECT
@@ -20,6 +20,20 @@ class GroupManager
     explicit GroupManager(QWidget *parent = nullptr);
     ~GroupManager();
     std::tuple<QString, CONFIGROOT> GetSelectedConfig();
+    void processCommands(QString command, QStringList commands, QMap<QString, QString>) override
+    {
+        const static QMap<QString, int> indexMap{ { "connection", 0 },   //
+                                                  { "subscription", 1 }, //
+                                                  { "dns", 2 },          //
+                                                  { "route", 3 } };
+        if (commands.isEmpty())
+            return;
+        if (command == "open")
+        {
+            const auto c = commands.takeFirst();
+            tabWidget->setCurrentIndex(indexMap[c]);
+        }
+    }
 
   private:
     QvMessageBusSlotDecl;
@@ -48,6 +62,11 @@ class GroupManager
     void on_connectionsTable_customContextMenuRequested(const QPoint &pos);
 
   private:
+    void reloadCurrentGroup()
+    {
+        this->reloadConnectionsList(currentGroupId);
+    }
+    void updateColorScheme() override;
     void reloadConnectionsList(const GroupId &group);
     void onRCMActionTriggered_Move();
     void onRCMActionTriggered_Copy();
@@ -65,7 +84,6 @@ class GroupManager
     QMenu *connectionListRCMenu_CopyToMenu = new QMenu(tr("Copy to..."));
     QMenu *connectionListRCMenu_MoveToMenu = new QMenu(tr("Move to..."));
     QMenu *connectionListRCMenu_LinkToMenu = new QMenu(tr("Link to..."));
-    void UpdateColorScheme();
     bool isUpdateInProgress = false;
     GroupId currentGroupId = NullGroupId;
     ConnectionId currentConnectionId = NullConnectionId;

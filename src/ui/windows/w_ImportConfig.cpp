@@ -9,20 +9,12 @@
 #include "ui/windows/w_GroupManager.hpp"
 #include "w_ScreenShot_Core.hpp"
 
-#include <QDebug>
-#include <QFile>
-#include <QFileDialog>
-#include <QJsonArray>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QThread>
-
 constexpr auto LINK_PAGE = 0;
 constexpr auto QRCODE_PAGE = 1;
 constexpr auto MANUAL_PAGE = 2;
 constexpr auto ADVANCED_PAGE = 3;
 
-ImportConfigWindow::ImportConfigWindow(QWidget *parent) : QDialog(parent)
+ImportConfigWindow::ImportConfigWindow(QWidget *parent) : QvDialog(parent)
 {
     setupUi(this);
     // nameTxt->setText(tr("New Connection") + QDateTime::currentDateTime().toString("MM-dd hh:mm"));
@@ -35,7 +27,7 @@ ImportConfigWindow::ImportConfigWindow(QWidget *parent) : QDialog(parent)
     }
 }
 
-void ImportConfigWindow::UpdateColorScheme()
+void ImportConfigWindow::updateColorScheme()
 {
     // Stub
 }
@@ -53,6 +45,7 @@ QvMessageBusSlotImpl(ImportConfigWindow)
 
 ImportConfigWindow::~ImportConfigWindow()
 {
+    DEBUG(MODULE_UI, "Import window destructor.");
 }
 
 QMultiHash<QString, CONFIGROOT> ImportConfigWindow::SelectConnection(bool outboundsOnly)
@@ -143,7 +136,6 @@ void ImportConfigWindow::on_qrFromScreenBtn_clicked()
     if (_r == QDialog::Accepted)
     {
         auto str = DecodeQRCode(pix);
-        qrImageLabel->setPixmap(QPixmap::fromImage(pix));
         if (str.trimmed().isEmpty())
         {
             LOG(MODULE_UI, "Cannot decode QR Code from an image, size: h=" + QSTRN(pix.width()) + ", v=" + QSTRN(pix.height()))

@@ -82,16 +82,12 @@ endif()
 # ==================================================================================
 set(QV2RAY_QNODEEDITOR_PROVIDER "module" CACHE STRING "qnodeeditor provider")
 set(QV2RAY_ZXING_PROVIDER "module" CACHE STRING "zxing-cpp provider")
+set(QV2RAY_SINGLEAPPLICATION_PROVIDER "module" CACHE STRING "SingleApplication provider")
 set(QV2RAY_DEFAULT_VASSETS_PATH "unset" CACHE STRING "v2ray assets path")
 set(QV2RAY_DEFAULT_VCORE_PATH "unset" CACHE STRING "v2ray core path")
 set(QV2RAY_TRANSLATION_PATH "unset" CACHE STRING "Qv2ray translations path")
 set(QV2RAY_DISABLE_AUTO_UPDATE OFF CACHE BOOL "Disable update checker")
 set(BUILD_TESTING OFF CACHE BOOL "Build test")
-if(UNIX AND NOT APPLE)
-    set(QV2RAY_USE_BUILTIN_DARKTHEME OFF CACHE BOOL "Use built-in dark theme instead of followed by the system settings")
-else()
-    set(QV2RAY_USE_BUILTIN_DARKTHEME ON CACHE BOOL "Use built-in dark theme instead of followed by the system settings")
-endif()
 set(EMBED_TRANSLATIONS OFF CACHE BOOL "Embed translations")
 
 if(QV2RAY_DEFAULT_VASSETS_PATH AND NOT QV2RAY_DEFAULT_VASSETS_PATH STREQUAL "unset")
@@ -104,10 +100,6 @@ endif()
 
 if(QV2RAY_TRANSLATION_PATH AND NOT QV2RAY_TRANSLATION_PATH STREQUAL "unset")
     add_definitions(-DQV2RAY_TRANSLATION_PATH="${QV2RAY_TRANSLATION_PATH}")
-endif()
-
-if(QV2RAY_USE_BUILTIN_DARKTHEME)
-    add_definitions(-DQV2RAY_USE_BUILTIN_DARKTHEME=true)
 endif()
 
 if(QV2RAY_DISABLE_AUTO_UPDATE)
@@ -199,8 +191,8 @@ add_executable(qv2ray
     ${GUI_TYPE}
     src/main.cpp
     assets/qv2ray.rc
-    ${QV2RAY_UI_SOURCES}
     ${QV2RAY_UI_FORMS}
+    ${QV2RAY_UI_SOURCES}
     ${SINGLEAPPLICATION_SOURCES}
     ${QNODEEDITOR_QRC_RESOURCES}
     ${QV2RAY_EMBED_TRANSLATION_QRC}
@@ -222,6 +214,7 @@ target_link_libraries(qv2ray-baselib
 target_link_libraries(qv2ray
     qv2ray-baselib
     ${QNODEEDITOR_LIBRARY}
+    ${SINGLEAPPLICATION_LIBRARY}
     )
 
 target_include_directories(qv2ray PUBLIC
@@ -254,7 +247,7 @@ add_custom_target(lupdate
                     ${QV2RAY_UI_SOURCES}
                     ${QV2RAY_UI_FORMS}
                     ${QNODEEDITOR_QRC_RESOURCES}
-                    ${SINGLEAPPLICATION_SOURCES} -ts ${TRANSLATIONS_TS} -locations none
+                    ${SINGLEAPPLICATION_SOURCES} -ts ${TRANSLATIONS_TS} -locations none -noobsolete
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 set_target_properties(lupdate PROPERTIES EXCLUDE_FROM_ALL TRUE)
 

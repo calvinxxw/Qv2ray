@@ -17,12 +17,12 @@ namespace Qv2ray::base::objects
             int port;
             QList<QString> domains;
             QList<QString> expectIPs;
-            DNSServerObject(){};
-            DNSServerObject(const QString &_address)
-                : QV2RAY_DNS_IS_COMPLEX_DNS(false), //
-                  address(_address),                //
-                  port(53)                          //
-                  {};
+            DNSServerObject() : QV2RAY_DNS_IS_COMPLEX_DNS(false), port(53){};
+            DNSServerObject(const QString &_address) : DNSServerObject()
+            {
+                address = _address;
+            };
+
             friend bool operator==(const DNSServerObject &left, const DNSServerObject &right)
             {
                 return left.QV2RAY_DNS_IS_COMPLEX_DNS == right.QV2RAY_DNS_IS_COMPLEX_DNS && //
@@ -190,9 +190,11 @@ namespace Qv2ray::base::objects
             bool congestion = false;
             int readBufferSize = 1;
             int writeBufferSize = 1;
+            QString seed;
             HeaderObject header;
             KCPObject() : header(){};
-            JSONSTRUCT_REGISTER(KCPObject, F(mtu, tti, uplinkCapacity, downlinkCapacity, congestion, readBufferSize, writeBufferSize, header))
+            JSONSTRUCT_REGISTER(KCPObject,
+                                F(mtu, tti, uplinkCapacity, downlinkCapacity, congestion, readBufferSize, writeBufferSize, header, seed))
         };
         //
         //

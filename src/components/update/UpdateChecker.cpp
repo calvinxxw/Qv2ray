@@ -2,6 +2,7 @@
 
 #include "3rdparty/libsemver/version.hpp"
 #include "base/Qv2rayBase.hpp"
+#include "common/HTTPRequestHelper.hpp"
 #include "common/QvHelpers.hpp"
 #include "core/settings/SettingsBackend.hpp"
 
@@ -16,42 +17,46 @@ const inline QMap<int, QString> UpdateChannelLink //
 
 namespace Qv2ray::components
 {
-    QvUpdateChecker::QvUpdateChecker(QObject *parent) : QObject(parent), requestHelper(this)
+    QvUpdateChecker::QvUpdateChecker(QObject *parent) : QObject(parent)
     {
-        connect(&requestHelper, &QvHttpRequestHelper::OnRequestFinished, this, &QvUpdateChecker::VersionUpdate);
+        requestHelper = new NetworkRequestHelper(this);
     }
+
     QvUpdateChecker::~QvUpdateChecker()
     {
     }
+
     void QvUpdateChecker::CheckUpdate()
     {
 #ifndef DISABLE_AUTO_UPDATE
         if (QFile(QV2RAY_CONFIG_DIR + "QV2RAY_FEATURE_DISABLE_AUTO_UPDATE").exists())
             return;
-        auto updateChannel = GlobalConfig.updateConfig.updateChannel;
+        const auto &updateChannel = GlobalConfig.updateConfig.updateChannel;
         LOG(MODULE_NETWORK, "Start checking update for channel ID: " + QSTRN(updateChannel))
-        requestHelper.AsyncGet(UpdateChannelLink[updateChannel]);
+        requestHelper->AsyncHttpGet(UpdateChannelLink[updateChannel], &QvUpdateChecker::VersionUpdate);
 #endif
     }
-    void QvUpdateChecker::VersionUpdate(QByteArray &data)
+
+    void QvUpdateChecker::VersionUpdate(const QByteArray &data)
     {
         // Version update handler.
-        auto doc = QJsonDocument::fromJson(data);
-        QJsonObject root = doc.isArray() ? doc.array().first().toObject() : doc.object();
+        const auto doc = QJsonDocument::fromJson(data);
+        const auto root = doc.isArray() ? doc.array().first().toObject() : doc.object();
         if (root.isEmpty())
             return;
-        //
+
         const auto newVersionStr = root["tag_name"].toString("v").mid(1);
         const auto currentVersionStr = QString(QV2RAY_VERSION_STRING);
         const auto ignoredVersionStr = GlobalConfig.updateConfig.ignoredVersion.isEmpty() ? "0.0.0" : GlobalConfig.updateConfig.ignoredVersion;
         //
-        auto newVersion = semver::version::from_string(newVersionStr.toStdString());
-        auto currentVersion = semver::version::from_string(currentVersionStr.toStdString());
-        auto ignoredVersion = semver::version::from_string(ignoredVersionStr.toStdString());
+        const auto newVersion = semver::version::from_string(newVersionStr.toStdString());
+        const auto currentVersion = semver::version::from_string(currentVersionStr.toStdString());
+        const auto ignoredVersion = semver::version::from_string(ignoredVersionStr.toStdString());
         //
-        LOG(MODULE_UPDATE, "Received update info, Latest: " + newVersionStr + //
-                               " Current: " + currentVersionStr +             //
-                               " Ignored: " + ignoredVersionStr)
+        LOG(MODULE_UPDATE, QString("Received update info:") + NEWLINE +         //
+                               " --> Latest: " + newVersionStr + NEWLINE +      //
+                               " --> Current: " + currentVersionStr + NEWLINE + //
+                               " --> Ignored: " + ignoredVersionStr)
         // If the version is newer than us.
         // And new version is newer than the ignored version.
         if (newVersion > currentVersion && newVersion > ignoredVersion)
@@ -63,8 +68,7 @@ namespace Qv2ray::components
                 return;
             }
             const auto link = root["html_url"].toString("");
-            auto result = QvMessageBoxAsk(nullptr, //
-                                          tr("Qv2ray Update"),
+            auto result = QvMessageBoxAsk(nullptr, tr("Qv2ray Update"),
                                           tr("A new version of Qv2ray has been found:") + //
                                               "v" + newVersionStr + NEWLINE + NEWLINE +   //
                                               name + NEWLINE "------------" NEWLINE +     //

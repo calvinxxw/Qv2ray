@@ -6,6 +6,11 @@
 #include "core/connection/ConnectionIO.hpp"
 #include "core/handler/KernelInstanceHandler.hpp"
 
+namespace Qv2ray::common::network
+{
+    class NetworkRequestHelper;
+}
+
 #define CheckIdExistance(type, id, val)                                                                                                         \
     if (!type.contains(id))                                                                                                                     \
     {                                                                                                                                           \
@@ -30,10 +35,7 @@ namespace Qv2ray::core::handler
       public slots:
         inline const QList<ConnectionId> Connections() const
         {
-            auto k = connections.keys();
-            std::sort(k.begin(), k.end(),
-                      [&](const auto &idA, const auto &idB) { return connections[idA].displayName < connections[idB].displayName; });
-            return k;
+            return connections.keys();
         }
         inline const QList<ConnectionId> Connections(const GroupId &groupId) const
         {
@@ -65,6 +67,14 @@ namespace Qv2ray::core::handler
         bool IsConnected(const ConnectionId &id) const
         {
             return kernelHandler->CurrentConnection().connectionId == id;
+        }
+
+        inline void IgnoreSubscriptionUpdate(const GroupId &group)
+        {
+            if (groups[group].isSubscription)
+            {
+                groups[group].lastUpdatedDate = system_clock::to_time_t(system_clock::now());
+            }
         }
         //
         //
@@ -107,6 +117,7 @@ namespace Qv2ray::core::handler
         // const optional<QString> DuplicateGroup(const GroupId &id);
         //
         // Subscriptions
+        void UpdateSubscriptionAsync(const GroupId &id);
         bool UpdateSubscription(const GroupId &id);
         bool SetSubscriptionData(const GroupId &id, std::optional<bool> isSubscription = std::nullopt,
                                  const std::optional<QString> &address = std::nullopt, std::optional<float> updateInterval = std::nullopt);
@@ -137,7 +148,7 @@ namespace Qv2ray::core::handler
         void OnGroupRenamed(const GroupId &id, const QString &oldName, const QString &newName);
         void OnGroupDeleted(const GroupId &id, const QList<ConnectionId> &connections);
         //
-        void OnSubscriptionUpdateFinished(const GroupId &id);
+        void OnSubscriptionAsyncUpdateFinished(const GroupId &id);
         void OnConnected(const ConnectionGroupPair &id);
         void OnDisconnected(const ConnectionGroupPair &id);
         void OnKernelCrashed(const ConnectionGroupPair &id, const QString &errMessage);
@@ -151,7 +162,7 @@ namespace Qv2ray::core::handler
         void timerEvent(QTimerEvent *event) override;
 
       private:
-        bool CHUpdateSubscription_p(const GroupId &id, const QString &url);
+        bool CHUpdateSubscription_p(const GroupId &id, const QByteArray &data);
 
       private:
         int saveTimerId;
@@ -164,6 +175,7 @@ namespace Qv2ray::core::handler
       private:
         LatencyTestHost *tcpingHelper;
         KernelInstanceHandler *kernelHandler;
+        Qv2ray::common::network::NetworkRequestHelper *asyncRequestHelper;
     };
 
     inline ::Qv2ray::core::handler::QvConfigHandler *ConnectionManager = nullptr;

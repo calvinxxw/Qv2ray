@@ -1,7 +1,6 @@
 #include "ConnectionIO.hpp"
 
 #include "Serialization.hpp"
-#include "common/HTTPRequestHelper.hpp"
 #include "common/QvHelpers.hpp"
 
 namespace Qv2ray::core::connection::connectionIO
@@ -23,24 +22,22 @@ namespace Qv2ray::core::connection::connectionIO
         return root;
     }
 
-    QMultiHash<QString, CONFIGROOT> GetConnectionConfigFromSubscription(const QUrl &subscriptionUrl, const QString &groupName)
+    QList<QPair<QString, CONFIGROOT>> GetConnectionConfigFromSubscription(const QByteArray &arr, const QString &groupName)
     {
-        QMultiHash<QString, CONFIGROOT> subscriptionContent;
-        QvHttpRequestHelper helper;
-        const auto data = helper.Get(subscriptionUrl);
-        auto subscriptionLines = SplitLines(TryDecodeSubscriptionString(data));
+        QList<QPair<QString, CONFIGROOT>> subscriptionContent;
+        auto subscriptionLines = SplitLines(TryDecodeSubscriptionString(arr));
         for (const auto &line : subscriptionLines)
         {
             QString __alias;
             QString __errMessage;
             // Assign a group name, to pass the name check.
             QString __groupName = groupName;
-            auto connectionConfigMap = ConvertConfigFromString(line.trimmed(), &__alias, &__errMessage, &__groupName);
+            const auto connectionConfigMap = ConvertConfigFromString(line.trimmed(), &__alias, &__errMessage, &__groupName);
             if (!__errMessage.isEmpty())
                 LOG(MODULE_SUBSCRIPTION, "Error: " + __errMessage)
             for (const auto &val : connectionConfigMap)
             {
-                subscriptionContent.insert(connectionConfigMap.key(val), val);
+                subscriptionContent.append({ connectionConfigMap.key(val), val });
             }
         }
         return subscriptionContent;

@@ -1,11 +1,12 @@
 #pragma once
-#include "common/HTTPRequestHelper.hpp"
 
 #include <QObject>
-namespace Qv2ray::common
+
+namespace Qv2ray::common::network
 {
-    class QvHttpRequestHelper;
+    class NetworkRequestHelper;
 }
+
 namespace Qv2ray::components
 {
     struct QvUpdateInfo
@@ -28,8 +29,8 @@ namespace Qv2ray::components
         void OnCheckUpdateCompleted(bool hasUpdate, const QvUpdateInfo &updateInfo);
 
       private:
-        void VersionUpdate(QByteArray &data);
-        common::QvHttpRequestHelper requestHelper;
+        Qv2ray::common::network::NetworkRequestHelper *requestHelper;
+        void static VersionUpdate(const QByteArray &data);
     };
 } // namespace Qv2ray::components
 using namespace Qv2ray::components;

@@ -6,7 +6,7 @@
 #include "ui/common/UIBase.hpp"
 #include "ui/editors/w_JsonEditor.hpp"
 
-PluginManageWindow::PluginManageWindow(QWidget *parent) : QDialog(parent)
+PluginManageWindow::PluginManageWindow(QWidget *parent) : QvDialog(parent)
 {
     setupUi(this);
     for (auto &plugin : PluginHost->AvailablePlugins())
@@ -23,6 +23,7 @@ PluginManageWindow::PluginManageWindow(QWidget *parent) : QDialog(parent)
 
 PluginManageWindow::~PluginManageWindow()
 {
+    DEBUG(MODULE_UI, "Plugin window destructor.")
 }
 
 void PluginManageWindow::on_pluginListWidget_currentItemChanged(QListWidgetItem *current, QListWidgetItem *previous)
